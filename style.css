@@ -20,6 +20,16 @@ select, input[type="number"], input[type="text"] {
   font-size: 0.5em;     /* その半分（15px） */
 }
 
+#pairHistory {
+    margin-top: 20px;
+    padding: 10px;
+    background: #f7f7f7;
+    border-radius: 8px;
+}
+.pair-history-item {
+    margin-bottom: 10px;
+}
+
 h1 {
   text-align: center;
 }
