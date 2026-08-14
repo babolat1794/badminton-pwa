@@ -24,11 +24,6 @@ function initPlayers(count) {
   document.getElementById("restArea").innerHTML = "";
 }
 
-`<span class="pair-text">
-   ${p1.id}<span class="small-count">(${p1.todayCount})</span>・
-   ${p2.id}<span class="small-count">(${p2.todayCount})</span>
- </span>`
-
 // ステータス表示
 function renderPlayerStatusList() {
   const container = document.getElementById("playerStatusList");
@@ -158,9 +153,9 @@ function renderRound(roundRecord) {
 
     const text = `
       【コート${c.court}】<br>
-      ペアA：${pA1.id}<span class="small-count">(${pA1.todayCount})・${pA2.id}<span class="small-count">(${pA2.todayCount})
+      ペアA：${pA1.id}・${pA2.id}
        vs 
-      ペアB：${pB1.id}<span class="small-count">(${pB1.todayCount})・${pB2.id}<span class="small-count">(${pB2.todayCount})
+      ペアB：${pB1.id}・${pB2.id}
     `;
     div.innerHTML = text;
     courtsDiv.appendChild(div);
