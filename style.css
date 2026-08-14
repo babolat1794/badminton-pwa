@@ -12,6 +12,10 @@ select, input[type="number"], input[type="text"] {
   min-width: 200px;
 }
 
+.small-count {
+  font-size: 0.5em;   /* ← 親文字の半分の大きさ */
+}
+
 h1 {
   text-align: center;
 }
