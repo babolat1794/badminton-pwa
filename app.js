@@ -3,7 +3,7 @@
 // =========================
 
 let players = [];
-let courtCount = 1;   // ★自動で決まるので初期値は1でOK
+let courtCount = 1;
 let roundNumber = 0;
 let history = [];
 
@@ -28,7 +28,8 @@ function setupPlayers() {
             pairHistory: {},
             opponentHistory: {},
             lastPair: null,
-            lastOpponent: null
+            lastOpponent: null,
+            lastCourt: null   // ★追加：最後に入ったコート番号
         });
     }
 
@@ -37,7 +38,7 @@ function setupPlayers() {
 }
 
 // =========================
-// ステータス表示（playerStatusList）
+// ステータス表示
 // =========================
 
 function renderPlayerStatusList() {
@@ -70,7 +71,7 @@ function setStatus(id, newStatus) {
 }
 
 // =========================
-// 対戦カード生成（nextRoundBtn）
+// 対戦カード生成
 // =========================
 
 document.getElementById("nextRoundBtn").onclick = () => {
@@ -81,17 +82,13 @@ function generateMatches() {
 
     roundNumber++;
 
-    // 1. 参加中の人を抽出
+    // 1. 参加中の人
     let activePlayers = players.filter(p => p.status === "active");
 
-    // ★参加人数に応じてコート数を自動決定
-    if (activePlayers.length >= 12) {
-        courtCount = 3;
-    } else if (activePlayers.length >= 8) {
-        courtCount = 2;
-    } else {
-        courtCount = 1;
-    }
+    // ★参加人数でコート数自動決定
+    if (activePlayers.length >= 12) courtCount = 3;
+    else if (activePlayers.length >= 8) courtCount = 2;
+    else courtCount = 1;
 
     const playersNeeded = courtCount * 4;
 
@@ -100,7 +97,7 @@ function generateMatches() {
         return;
     }
 
-    // 2. todayCount が少ない順に並べる
+    // 2. todayCount が少ない順
     activePlayers.sort((a, b) => a.todayCount - b.todayCount);
 
     // 3. 試合に出る人
@@ -109,7 +106,7 @@ function generateMatches() {
     // 4. 休憩候補
     let restCandidates = activePlayers.slice(playersNeeded);
 
-    // 5. ★連続休憩禁止
+    // ★連続休憩禁止
     restCandidates = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
 
     if (restCandidates.length === 0) {
@@ -119,13 +116,13 @@ function generateMatches() {
     const restPlayers = restCandidates;
     restPlayers.forEach(p => p.lastRestRound = roundNumber);
 
-    // 6. todayCount++
+    // 5. todayCount++
     playersForThisRound.forEach(p => p.todayCount++);
 
-    // 7. ★連続ペア禁止ロジック付きペア作成
+    // 6. ★連続ペア禁止ロジック付きペア作成
     const pairs = createPairs(playersForThisRound);
 
-    // 8. ペア履歴更新
+    // 7. ペア履歴更新
     pairs.forEach(pair => {
         const [p1, p2] = pair;
 
@@ -136,17 +133,11 @@ function generateMatches() {
         p2.lastPair = p1.id;
     });
 
-    // 9. コート割り当て
-    const courts = [];
-    for (let i = 0; i < courtCount; i++) {
-        courts.push({
-            A: pairs[i * 2],
-            B: pairs[i * 2 + 1]
-        });
-    }
+    // 8. ★連続コート禁止ロジック付きコート割り当て
+    const courts = assignCourts(pairs);
 
-    // 10. 対戦履歴更新
-    courts.forEach(c => {
+    // 9. 対戦履歴更新
+    courts.forEach((c, courtIndex) => {
         const A = c.A;
         const B = c.B;
 
@@ -158,10 +149,16 @@ function generateMatches() {
                 a.lastOpponent = b.id;
                 b.lastOpponent = a.id;
             });
+
+            a.lastCourt = courtIndex + 1;  // ★コート記録
+        });
+
+        B.forEach(b => {
+            b.lastCourt = courtIndex + 1;  // ★コート記録
         });
     });
 
-    // 11. 表示（roundInfo + courts）
+    // 10. 表示
     const roundInfo = document.getElementById("roundInfo");
     roundInfo.innerHTML = `第${roundNumber}ラリー（コート数：${courtCount}）`;
 
@@ -181,7 +178,7 @@ function generateMatches() {
         courtDiv.appendChild(div);
     });
 
-    // 12. 履歴追加
+    // 11. 履歴追加
     history.push(courts);
 
     renderPlayerStatusList();
@@ -190,26 +187,22 @@ function generateMatches() {
 }
 
 // =========================
-// ★連続ペア禁止ロジック付きペア作成
+// ★連続ペア禁止ロジック
 // =========================
 
 function createPairs(playersForThisRound) {
 
-    let maxTry = 50; // 無限ループ防止
+    let maxTry = 50;
     while (maxTry-- > 0) {
 
-        // シャッフル
         let shuffled = shuffle([...playersForThisRound]);
-
         let valid = true;
         let tempPairs = [];
 
-        // 2人ずつペアにする
         for (let i = 0; i < shuffled.length; i += 2) {
             const p1 = shuffled[i];
             const p2 = shuffled[i + 1];
 
-            // ★連続ペア禁止
             if (p1.lastPair === p2.id || p2.lastPair === p1.id) {
                 valid = false;
                 break;
@@ -218,12 +211,9 @@ function createPairs(playersForThisRound) {
             tempPairs.push([p1, p2]);
         }
 
-        if (valid) {
-            return tempPairs;
-        }
+        if (valid) return tempPairs;
     }
 
-    // どうしても無理なら通常ペア（最終手段）
     return shuffle([...playersForThisRound]).reduce((acc, cur, idx, arr) => {
         if (idx % 2 === 0) acc.push([arr[idx], arr[idx + 1]]);
         return acc;
@@ -231,7 +221,51 @@ function createPairs(playersForThisRound) {
 }
 
 // =========================
-// ペア履歴表示（pairHistory）
+// ★連続コート禁止ロジック
+// =========================
+
+function assignCourts(pairs) {
+
+    let maxTry = 50;
+
+    while (maxTry-- > 0) {
+
+        let shuffled = shuffle([...pairs]);
+        let courts = [];
+        let valid = true;
+
+        for (let i = 0; i < courtCount; i++) {
+            const A = shuffled[i * 2];
+            const B = shuffled[i * 2 + 1];
+
+            const courtNumber = i + 1;
+
+            // ★連続で同じコートに入らない
+            if (
+                A[0].lastCourt === courtNumber ||
+                A[1].lastCourt === courtNumber ||
+                B[0].lastCourt === courtNumber ||
+                B[1].lastCourt === courtNumber
+            ) {
+                valid = false;
+                break;
+            }
+
+            courts.push({ A, B });
+        }
+
+        if (valid) return courts;
+    }
+
+    // 最終手段（偏りは出るが必ず割り当て可能）
+    return pairs.reduce((acc, cur, idx, arr) => {
+        if (idx % 2 === 0) acc.push({ A: arr[idx], B: arr[idx + 1] });
+        return acc;
+    }, []);
+}
+
+// =========================
+// ペア履歴表示
 // =========================
 
 function renderPairHistory() {
@@ -256,7 +290,7 @@ function renderPairHistory() {
 }
 
 // =========================
-// 履歴表示（historyList）
+// 履歴表示
 // =========================
 
 function renderHistory() {
