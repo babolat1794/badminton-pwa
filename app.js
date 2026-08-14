@@ -153,9 +153,9 @@ function renderRound(roundRecord) {
 
     const text = `
       【コート${c.court}】<br>
-      ペアA：${pA1.id}(${pA1.todayCount})・${pA2.id}(${pA2.todayCount})
+      ペアA：${pA1.id}<span class="small-count">(${pA1.todayCount})・${pA2.id}<span class="small-count">(${pA2.todayCount})
        vs 
-      ペアB：${pB1.id}(${pB1.todayCount})・${pB2.id}(${pB2.todayCount})
+      ペアB：${pB1.id}<span class="small-count">(${pB1.todayCount})・${pB2.id}<span class="small-count">(${pB2.todayCount})
     `;
     div.innerHTML = text;
     courtsDiv.appendChild(div);
