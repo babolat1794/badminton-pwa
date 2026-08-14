@@ -84,6 +84,7 @@ function decideCourtCount(activeCount) {
 // 次のラリーを生成
 function nextRound() {
   const activePlayers = players.filter(p => p.status === "active");
+  activePlayers.sort((a, b) => a.todayCount - b.todayCount);
   const activeCount = activePlayers.length;
 
   if (activeCount < 4) {
