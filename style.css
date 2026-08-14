@@ -12,8 +12,12 @@ select, input[type="number"], input[type="text"] {
   min-width: 200px;
 }
 
-.small-count {
-  font-size: 15px;   /* 親が30pxなら半分の大きさを直接指定 */
+.pair-text {
+  font-size: 30px;      /* ペア全体の基準サイズ */
+}
+
+.pair-text .small-count {
+  font-size: 0.5em;     /* その半分（15px） */
 }
 
 h1 {
