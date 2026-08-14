@@ -5,6 +5,13 @@ body {
   font-size: 30px;
 }
 
+select, input[type="number"], input[type="text"] {
+  font-size: 26px;
+  padding: 14px 20px;
+  border-radius: 10px;
+  min-width: 200px;
+}
+
 h1 {
   text-align: center;
 }
