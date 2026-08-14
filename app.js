@@ -3,7 +3,7 @@
 // =========================
 
 let players = [];
-let courtCount = 2;
+let courtCount = 1;   // ★自動で決まるので初期値は1でOK
 let roundNumber = 0;
 let history = [];
 
@@ -84,7 +84,18 @@ function generateMatches() {
     // 1. 参加中の人を抽出
     let activePlayers = players.filter(p => p.status === "active");
 
-    if (activePlayers.length < courtCount * 4) {
+    // ★参加人数に応じてコート数を自動決定
+    if (activePlayers.length >= 12) {
+        courtCount = 3;
+    } else if (activePlayers.length >= 8) {
+        courtCount = 2;
+    } else {
+        courtCount = 1;
+    }
+
+    const playersNeeded = courtCount * 4;
+
+    if (activePlayers.length < playersNeeded) {
         alert("参加者が不足しています");
         return;
     }
@@ -92,16 +103,13 @@ function generateMatches() {
     // 2. todayCount が少ない順に並べる
     activePlayers.sort((a, b) => a.todayCount - b.todayCount);
 
-    // 3. 必要人数
-    const playersNeeded = courtCount * 4;
-
-    // 4. 試合に出る人
+    // 3. 試合に出る人
     let playersForThisRound = activePlayers.slice(0, playersNeeded);
 
-    // 5. 休憩候補
+    // 4. 休憩候補
     let restCandidates = activePlayers.slice(playersNeeded);
 
-    // 6. ★連続休憩禁止
+    // 5. ★連続休憩禁止
     restCandidates = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
 
     if (restCandidates.length === 0) {
@@ -111,13 +119,13 @@ function generateMatches() {
     const restPlayers = restCandidates;
     restPlayers.forEach(p => p.lastRestRound = roundNumber);
 
-    // 7. todayCount++
+    // 6. todayCount++
     playersForThisRound.forEach(p => p.todayCount++);
 
-    // 8. ★連続ペア禁止ロジック付きペア作成
+    // 7. ★連続ペア禁止ロジック付きペア作成
     const pairs = createPairs(playersForThisRound);
 
-    // 9. ペア履歴更新
+    // 8. ペア履歴更新
     pairs.forEach(pair => {
         const [p1, p2] = pair;
 
@@ -128,7 +136,7 @@ function generateMatches() {
         p2.lastPair = p1.id;
     });
 
-    // 10. コート割り当て
+    // 9. コート割り当て
     const courts = [];
     for (let i = 0; i < courtCount; i++) {
         courts.push({
@@ -137,7 +145,7 @@ function generateMatches() {
         });
     }
 
-    // 11. 対戦履歴更新
+    // 10. 対戦履歴更新
     courts.forEach(c => {
         const A = c.A;
         const B = c.B;
@@ -153,9 +161,9 @@ function generateMatches() {
         });
     });
 
-    // 12. 表示（roundInfo + courts）
+    // 11. 表示（roundInfo + courts）
     const roundInfo = document.getElementById("roundInfo");
-    roundInfo.innerHTML = `第${roundNumber}ラリー`;
+    roundInfo.innerHTML = `第${roundNumber}ラリー（コート数：${courtCount}）`;
 
     const courtDiv = document.getElementById("courts");
     courtDiv.innerHTML = "";
@@ -173,7 +181,7 @@ function generateMatches() {
         courtDiv.appendChild(div);
     });
 
-    // 13. 履歴追加
+    // 12. 履歴追加
     history.push(courts);
 
     renderPlayerStatusList();
