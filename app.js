@@ -24,6 +24,11 @@ function initPlayers(count) {
   document.getElementById("restArea").innerHTML = "";
 }
 
+`<span class="pair-text">
+   ${p1.id}<span class="small-count">(${p1.todayCount})</span>・
+   ${p2.id}<span class="small-count">(${p2.todayCount})</span>
+ </span>`
+
 // ステータス表示
 function renderPlayerStatusList() {
   const container = document.getElementById("playerStatusList");
