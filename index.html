@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>バドミントン組み合わせ</title>
+
+  <!-- iPhoneでWebアプリとして開くための設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="バド組み合わせ">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>バドミントン ダブルス組み合わせ</h1>
+
+  <section id="controls">
+    <h2>参加者設定</h2>
+    <label>参加人数（最大25人）:
+      <input type="number" id="playerCount" min="4" max="25" value="14">
+    </label>
+    <button id="initBtn">参加者を生成</button>
+
+    <h3>ステータス変更</h3>
+    <div id="playerStatusList"></div>
+  </section>
+
+  <section id="round">
+    <h2>対戦カード生成</h2>
+    <button id="nextRoundBtn">次の組み合わせを作る</button>
+    <div id="roundInfo"></div>
+    <div id="courts"></div>
+    <div id="restArea"></div>
+  </section>
+
+  <section id="history">
+    <h2>履歴</h2>
+    <div id="historyList"></div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
