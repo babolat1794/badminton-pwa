@@ -7,7 +7,14 @@ let courtCount = 2;
 let roundNumber = 0;
 let history = [];
 
-// 参加者登録
+// =========================
+// 参加者生成（initBtn）
+// =========================
+
+document.getElementById("initBtn").onclick = () => {
+    setupPlayers();
+};
+
 function setupPlayers() {
     const count = parseInt(document.getElementById("playerCount").value);
     players = [];
@@ -18,49 +25,57 @@ function setupPlayers() {
             status: "active",
             todayCount: 0,
             lastRestRound: -1,
-            pairHistory: {},       // 誰と何回ペアになったか
-            opponentHistory: {},   // 誰と何回対戦したか
+            pairHistory: {},
+            opponentHistory: {},
             lastPair: null,
             lastOpponent: null
         });
     }
 
-    renderPlayerStatus();
+    renderPlayerStatusList();
     renderPairHistory();
 }
 
-// 参加者状態表示
-function renderPlayerStatus() {
-    const div = document.getElementById("playerStatus");
+// =========================
+// ステータス表示（playerStatusList）
+// =========================
+
+function renderPlayerStatusList() {
+    const div = document.getElementById("playerStatusList");
     div.innerHTML = "";
 
     players.forEach(p => {
-        const s = document.createElement("div");
-        s.className = "player-status-item";
+        const row = document.createElement("div");
+        row.className = "player-status-item";
 
-        let statusText = "";
-        if (p.status === "active") statusText = "参加中";
-        if (p.status === "rest") statusText = "休憩";
-        if (p.status === "left") statusText = "帰宅";
+        row.innerHTML = `
+            ${p.id}番（登場 ${p.todayCount}回）
+            <button onclick="setStatus(${p.id}, 'active')">参加</button>
+            <button onclick="setStatus(${p.id}, 'rest')">休憩</button>
+            <button onclick="setStatus(${p.id}, 'left')">帰宅</button>
+        `;
 
-        s.innerHTML = `${p.id}：${statusText}（今日の登場回数：${p.todayCount}）`;
-        div.appendChild(s);
+        div.appendChild(row);
     });
 }
 
-// 状態変更
 function setStatus(id, newStatus) {
     const p = players.find(x => x.id === id);
     if (!p) return;
 
     p.status = newStatus;
-    renderPlayerStatus();
+
+    renderPlayerStatusList();
     renderPairHistory();
 }
 
 // =========================
-// 公平アルゴリズムによる試合生成
+// 対戦カード生成（nextRoundBtn）
 // =========================
+
+document.getElementById("nextRoundBtn").onclick = () => {
+    generateMatches();
+};
 
 function generateMatches() {
 
@@ -68,6 +83,11 @@ function generateMatches() {
 
     // 1. 参加中の人を抽出
     let activePlayers = players.filter(p => p.status === "active");
+
+    if (activePlayers.length < courtCount * 4) {
+        alert("参加者が不足しています");
+        return;
+    }
 
     // 2. todayCount が少ない順に並べる
     activePlayers.sort((a, b) => a.todayCount - b.todayCount);
@@ -138,7 +158,10 @@ function generateMatches() {
         });
     });
 
-    // 12. 表示（登場回数のカッコ書きは消す）
+    // 12. 表示（roundInfo + courts）
+    const roundInfo = document.getElementById("roundInfo");
+    roundInfo.innerHTML = `第${roundNumber}ラリー`;
+
     const courtDiv = document.getElementById("courts");
     courtDiv.innerHTML = "";
 
@@ -158,27 +181,27 @@ function generateMatches() {
     // 13. 履歴追加
     history.push(courts);
 
-    renderPlayerStatus();
+    renderPlayerStatusList();
     renderPairHistory();
     renderHistory();
 }
 
 // =========================
-// 表示：ペア履歴
+// ペア履歴表示（pairHistory）
 // =========================
 
 function renderPairHistory() {
     const div = document.getElementById("pairHistory");
-    div.innerHTML = "";
+    div.innerHTML = "<h3>ペア履歴</h3>";
 
     players.forEach(p => {
         let html = `<div class="pair-history-item">`;
-        html += `<strong>${p.id}番：</strong> 今日の登場回数 ${p.todayCount}回<br>`;
-        html += `ペア履歴：`;
+        html += `<strong>${p.id}番：</strong> 登場 ${p.todayCount}回<br>`;
+        html += `ペア：`;
 
         const entries = Object.entries(p.pairHistory);
         if (entries.length === 0) {
-            html += `（まだ誰ともペアになっていません）`;
+            html += `（まだペアなし）`;
         } else {
             html += entries.map(([partnerId, count]) => `${partnerId}番(${count}回)`).join(", ");
         }
@@ -189,11 +212,11 @@ function renderPairHistory() {
 }
 
 // =========================
-// 履歴表示
+// 履歴表示（historyList）
 // =========================
 
 function renderHistory() {
-    const div = document.getElementById("history");
+    const div = document.getElementById("historyList");
     div.innerHTML = "";
 
     history.forEach((round, idx) => {
@@ -211,7 +234,7 @@ function renderHistory() {
 }
 
 // =========================
-// ユーティリティ：シャッフル
+// シャッフル
 // =========================
 
 function shuffle(array) {
