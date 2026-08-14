@@ -40,7 +40,7 @@ function renderPlayerStatusList() {
       <span class="${statusClass}">
         ${p.id}：${p.status === "active" ? "参加中" :
                   p.status === "rest" ? "休憩中" : "帰宅"}
-        （今日の登場回数：${p.todayCount}）
+        （登場回数：${p.todayCount}）
       </span>
       <button data-id="${p.id}" data-action="active">参加</button>
       <button data-id="${p.id}" data-action="rest">休憩</button>
