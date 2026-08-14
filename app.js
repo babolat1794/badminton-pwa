@@ -1,210 +1,223 @@
+// =========================
+// 初期設定
+// =========================
+
 let players = [];
-let history = [];
+let courtCount = 2;
 let roundNumber = 0;
+let history = [];
 
-// 参加者を初期化
-function initPlayers(count) {
-  players = [];
-  for (let i = 1; i <= count; i++) {
-    players.push({
-      id: i,
-      status: "active",      // active / rest / left
-      todayCount: 0,
-      courtHistory: [],
-      pairHistory: {},
-      vsHistory: {}
-    });
-  }
-  roundNumber = 0;
-  history = [];
-  renderPlayerStatusList();
-  renderHistory();
-  document.getElementById("roundInfo").textContent = "";
-  document.getElementById("courts").innerHTML = "";
-  document.getElementById("restArea").innerHTML = "";
-}
+// 参加者登録
+function setupPlayers() {
+    const count = parseInt(document.getElementById("playerCount").value);
+    players = [];
 
-// ステータス表示
-function renderPlayerStatusList() {
-  const container = document.getElementById("playerStatusList");
-  container.innerHTML = "";
-  players.forEach(p => {
-    const div = document.createElement("div");
-    div.className = "player-status-item";
-    const statusClass =
-      p.status === "active" ? "status-active" :
-      p.status === "rest" ? "status-rest" :
-      "status-left";
-
-    div.innerHTML = `
-      <span class="${statusClass}">
-        ${p.id}：${p.status === "active" ? "参加中" :
-                  p.status === "rest" ? "休憩中" : "帰宅"}
-        （登場回数：${p.todayCount}）
-      </span>
-      <button data-id="${p.id}" data-action="active">参加</button>
-      <button data-id="${p.id}" data-action="rest">休憩</button>
-      <button data-id="${p.id}" data-action="left">帰宅</button>
-    `;
-    container.appendChild(div);
-  });
-
-  // ボタンイベント
-  container.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = Number(btn.getAttribute("data-id"));
-      const action = btn.getAttribute("data-action");
-      const player = players.find(p => p.id === id);
-      if (!player) return;
-      player.status = action === "active" ? "active"
-                    : action === "rest" ? "rest"
-                    : "left";
-      renderPlayerStatusList();
-    });
-  });
-}
-
-// シャッフル関数
-function shuffle(array) {
-  const arr = array.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-// コート数を決める（簡易版）
-function decideCourtCount(activeCount) {
-  if (activeCount >= 12) return 3;
-  if (activeCount >= 8) return 2;
-  return 1;
-}
-
-// 次のラリーを生成
-function nextRound() {
-  const activePlayers = players.filter(p => p.status === "active");
-  activePlayers.sort((a, b) => a.todayCount - b.todayCount);
-  const activeCount = activePlayers.length;
-
-  if (activeCount < 4) {
-    alert("参加中の人数が4人未満です。");
-    return;
-  }
-
-  const courtCount = decideCourtCount(activeCount);
-  const maxPlayersUsed = courtCount * 4;
-  const shuffled = shuffle(activePlayers);
-
-  const usedPlayers = shuffled.slice(0, maxPlayersUsed);
-  const restPlayers = shuffled.slice(maxPlayersUsed);
-
-  // todayCount を増やす
-  usedPlayers.forEach(p => {
-    p.todayCount += 1;
-  });
-
-  // コートごとのペアを作る
-  const courts = [];
-  for (let c = 0; c < courtCount; c++) {
-    const base = c * 4;
-    const p1 = usedPlayers[base];
-    const p2 = usedPlayers[base + 1];
-    const p3 = usedPlayers[base + 2];
-    const p4 = usedPlayers[base + 3];
-    courts.push({
-      court: c + 1,
-      pairA: [p1.id, p2.id],
-      pairB: [p3.id, p4.id]
-    });
-    // courtHistory に追加
-    [p1, p2, p3, p4].forEach(p => p.courtHistory.push(c + 1));
-  }
-
-  roundNumber += 1;
-
-  const roundRecord = {
-    round: roundNumber,
-    courts: courts,
-    rest: restPlayers.map(p => p.id)
-  };
-  history.push(roundRecord);
-
-  renderRound(roundRecord);
-  renderHistory();
-  renderPlayerStatusList();
-}
-
-// 現在ラリーの表示
-function renderRound(roundRecord) {
-  const info = document.getElementById("roundInfo");
-  info.textContent = `第${roundRecord.round}ラリー`;
-
-  const courtsDiv = document.getElementById("courts");
-  courtsDiv.innerHTML = "";
-
-  roundRecord.courts.forEach(c => {
-    const div = document.createElement("div");
-    div.className = "court-card";
-
-    const pA1 = players.find(p => p.id === c.pairA[0]);
-    const pA2 = players.find(p => p.id === c.pairA[1]);
-    const pB1 = players.find(p => p.id === c.pairB[0]);
-    const pB2 = players.find(p => p.id === c.pairB[1]);
-
-    const text = `
-      【コート${c.court}】<br>
-      ペアA：${pA1.id}・${pA2.id}
-       vs 
-      ペアB：${pB1.id}・${pB2.id}
-    `;
-    div.innerHTML = text;
-    courtsDiv.appendChild(div);
-  });
-
-  const restDiv = document.getElementById("restArea");
-  if (roundRecord.rest.length > 0) {
-    restDiv.innerHTML = `休憩：${roundRecord.rest.join(", ")}`;
-  } else {
-    restDiv.innerHTML = "休憩：なし";
-  }
-}
-
-// 履歴表示
-function renderHistory() {
-  const container = document.getElementById("historyList");
-  container.innerHTML = "";
-  history.forEach(r => {
-    const div = document.createElement("div");
-    div.className = "history-item";
-    let html = `【第${r.round}ラリー】<br>`;
-    r.courts.forEach(c => {
-      html += `コート${c.court}：${c.pairA[0]}・${c.pairA[1]} vs ${c.pairB[0]}・${c.pairB[1]}<br>`;
-    });
-    html += `休憩：${r.rest.length > 0 ? r.rest.join(", ") : "なし"}`;
-    div.innerHTML = html;
-    container.appendChild(div);
-  });
-}
-
-// イベント設定
-window.addEventListener("DOMContentLoaded", () => {
-  const initBtn = document.getElementById("initBtn");
-  const nextRoundBtn = document.getElementById("nextRoundBtn");
-
-  initBtn.addEventListener("click", () => {
-    const count = Number(document.getElementById("playerCount").value);
-    if (count < 4 || count > 25) {
-      alert("参加人数は4〜25人で指定してください。");
-      return;
+    for (let i = 1; i <= count; i++) {
+        players.push({
+            id: i,
+            status: "active",
+            todayCount: 0,
+            lastRestRound: -1,
+            pairHistory: {},       // 誰と何回ペアになったか
+            opponentHistory: {},   // 誰と何回対戦したか
+            lastPair: null,
+            lastOpponent: null
+        });
     }
-    initPlayers(count);
-  });
 
-  nextRoundBtn.addEventListener("click", () => {
-    nextRound();
-  });
+    renderPlayerStatus();
+    renderPairHistory();
+}
 
-  // デフォルトで14人生成
-  initPlayers(14);
-});
+// 参加者状態表示
+function renderPlayerStatus() {
+    const div = document.getElementById("playerStatus");
+    div.innerHTML = "";
+
+    players.forEach(p => {
+        const s = document.createElement("div");
+        s.className = "player-status-item";
+
+        let statusText = "";
+        if (p.status === "active") statusText = "参加中";
+        if (p.status === "rest") statusText = "休憩";
+        if (p.status === "left") statusText = "帰宅";
+
+        s.innerHTML = `${p.id}：${statusText}（今日の登場回数：${p.todayCount}）`;
+        div.appendChild(s);
+    });
+}
+
+// 状態変更
+function setStatus(id, newStatus) {
+    const p = players.find(x => x.id === id);
+    if (!p) return;
+
+    p.status = newStatus;
+    renderPlayerStatus();
+    renderPairHistory();
+}
+
+// =========================
+// 公平アルゴリズムによる試合生成
+// =========================
+
+function generateMatches() {
+
+    roundNumber++;
+
+    // 1. 参加中の人を抽出
+    let activePlayers = players.filter(p => p.status === "active");
+
+    // 2. todayCount が少ない順に並べる
+    activePlayers.sort((a, b) => a.todayCount - b.todayCount);
+
+    // 3. 必要人数
+    const playersNeeded = courtCount * 4;
+
+    // 4. 試合に出る人
+    let playersForThisRound = activePlayers.slice(0, playersNeeded);
+
+    // 5. 休憩候補
+    let restCandidates = activePlayers.slice(playersNeeded);
+
+    // 6. ★連続休憩禁止
+    restCandidates = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
+
+    if (restCandidates.length === 0) {
+        restCandidates = activePlayers.slice(playersNeeded);
+    }
+
+    const restPlayers = restCandidates;
+    restPlayers.forEach(p => p.lastRestRound = roundNumber);
+
+    // 7. todayCount++
+    playersForThisRound.forEach(p => p.todayCount++);
+
+    // 8. ペア作成（公平性のためシャッフル）
+    playersForThisRound = shuffle(playersForThisRound);
+
+    const pairs = [];
+    for (let i = 0; i < playersForThisRound.length; i += 2) {
+        pairs.push([playersForThisRound[i], playersForThisRound[i + 1]]);
+    }
+
+    // 9. ペア履歴更新
+    pairs.forEach(pair => {
+        const [p1, p2] = pair;
+
+        p1.pairHistory[p2.id] = (p1.pairHistory[p2.id] || 0) + 1;
+        p2.pairHistory[p1.id] = (p2.pairHistory[p1.id] || 0) + 1;
+
+        p1.lastPair = p2.id;
+        p2.lastPair = p1.id;
+    });
+
+    // 10. コート割り当て
+    const courts = [];
+    for (let i = 0; i < courtCount; i++) {
+        courts.push({
+            A: pairs[i * 2],
+            B: pairs[i * 2 + 1]
+        });
+    }
+
+    // 11. 対戦履歴更新
+    courts.forEach(c => {
+        const A = c.A;
+        const B = c.B;
+
+        A.forEach(a => {
+            B.forEach(b => {
+                a.opponentHistory[b.id] = (a.opponentHistory[b.id] || 0) + 1;
+                b.opponentHistory[a.id] = (b.opponentHistory[a.id] || 0) + 1;
+
+                a.lastOpponent = b.id;
+                b.lastOpponent = a.id;
+            });
+        });
+    });
+
+    // 12. 表示（登場回数のカッコ書きは消す）
+    const courtDiv = document.getElementById("courts");
+    courtDiv.innerHTML = "";
+
+    courts.forEach((c, idx) => {
+        const div = document.createElement("div");
+        div.className = "court-card";
+
+        div.innerHTML =
+            `コート${idx + 1}<br>
+             ペアA：${c.A[0].id}・${c.A[1].id}<br>
+             vs<br>
+             ペアB：${c.B[0].id}・${c.B[1].id}`;
+
+        courtDiv.appendChild(div);
+    });
+
+    // 13. 履歴追加
+    history.push(courts);
+
+    renderPlayerStatus();
+    renderPairHistory();
+    renderHistory();
+}
+
+// =========================
+// 表示：ペア履歴
+// =========================
+
+function renderPairHistory() {
+    const div = document.getElementById("pairHistory");
+    div.innerHTML = "";
+
+    players.forEach(p => {
+        let html = `<div class="pair-history-item">`;
+        html += `<strong>${p.id}番：</strong> 今日の登場回数 ${p.todayCount}回<br>`;
+        html += `ペア履歴：`;
+
+        const entries = Object.entries(p.pairHistory);
+        if (entries.length === 0) {
+            html += `（まだ誰ともペアになっていません）`;
+        } else {
+            html += entries.map(([partnerId, count]) => `${partnerId}番(${count}回)`).join(", ");
+        }
+
+        html += `</div>`;
+        div.innerHTML += html;
+    });
+}
+
+// =========================
+// 履歴表示
+// =========================
+
+function renderHistory() {
+    const div = document.getElementById("history");
+    div.innerHTML = "";
+
+    history.forEach((round, idx) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        let text = `第${idx + 1}ラリー<br>`;
+        round.forEach((c, i) => {
+            text += `コート${i + 1}：${c.A[0].id}・${c.A[1].id} vs ${c.B[0].id}・${c.B[1].id}<br>`;
+        });
+
+        item.innerHTML = text;
+        div.appendChild(item);
+    });
+}
+
+// =========================
+// ユーティリティ：シャッフル
+// =========================
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
