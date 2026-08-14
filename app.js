@@ -114,13 +114,8 @@ function generateMatches() {
     // 7. todayCount++
     playersForThisRound.forEach(p => p.todayCount++);
 
-    // 8. ペア作成（公平性のためシャッフル）
-    playersForThisRound = shuffle(playersForThisRound);
-
-    const pairs = [];
-    for (let i = 0; i < playersForThisRound.length; i += 2) {
-        pairs.push([playersForThisRound[i], playersForThisRound[i + 1]]);
-    }
+    // 8. ★連続ペア禁止ロジック付きペア作成
+    const pairs = createPairs(playersForThisRound);
 
     // 9. ペア履歴更新
     pairs.forEach(pair => {
@@ -184,6 +179,47 @@ function generateMatches() {
     renderPlayerStatusList();
     renderPairHistory();
     renderHistory();
+}
+
+// =========================
+// ★連続ペア禁止ロジック付きペア作成
+// =========================
+
+function createPairs(playersForThisRound) {
+
+    let maxTry = 50; // 無限ループ防止
+    while (maxTry-- > 0) {
+
+        // シャッフル
+        let shuffled = shuffle([...playersForThisRound]);
+
+        let valid = true;
+        let tempPairs = [];
+
+        // 2人ずつペアにする
+        for (let i = 0; i < shuffled.length; i += 2) {
+            const p1 = shuffled[i];
+            const p2 = shuffled[i + 1];
+
+            // ★連続ペア禁止
+            if (p1.lastPair === p2.id || p2.lastPair === p1.id) {
+                valid = false;
+                break;
+            }
+
+            tempPairs.push([p1, p2]);
+        }
+
+        if (valid) {
+            return tempPairs;
+        }
+    }
+
+    // どうしても無理なら通常ペア（最終手段）
+    return shuffle([...playersForThisRound]).reduce((acc, cur, idx, arr) => {
+        if (idx % 2 === 0) acc.push([arr[idx], arr[idx + 1]]);
+        return acc;
+    }, []);
 }
 
 // =========================
