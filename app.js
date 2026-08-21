@@ -24,7 +24,7 @@ function setupPlayers() {
             id: i,
             status: "active",
             todayCount: 0,
-            restCount: 0,          // ★休憩回数（公平性のため追加）
+            restCount: 0,
             lastRestRound: -1,
             pairHistory: {},
             opponentHistory: {},
@@ -86,7 +86,7 @@ function generateMatches() {
     // 1. 参加中の人
     let activePlayers = players.filter(p => p.status === "active");
 
-    // ★参加人数でコート数自動決定
+    // コート数自動決定
     if (activePlayers.length >= 12) courtCount = 3;
     else if (activePlayers.length >= 8) courtCount = 2;
     else courtCount = 1;
@@ -107,21 +107,16 @@ function generateMatches() {
     // 4. 休憩候補（残りの人）
     let restCandidates = activePlayers.slice(playersNeeded);
 
-    // ★休憩回数の公平性：restCount が少ない順に並べる
+    // 休憩回数の公平性：restCount が少ない順
     restCandidates.sort((a, b) => a.restCount - b.restCount);
 
-    // ★連続休憩禁止
-    restCandidates = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
-
-    // ★もし全員連続休憩になるなら、restCount が少ない人を優先
-    if (restCandidates.length === 0) {
-        restCandidates = activePlayers.slice(playersNeeded);
-        restCandidates.sort((a, b) => a.restCount - b.restCount);
+    // 連続休憩禁止
+    let filtered = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
+    if (filtered.length > 0) {
+        restCandidates = filtered;
     }
 
     const restPlayers = restCandidates;
-
-    // ★休憩回数を増やす
     restPlayers.forEach(p => {
         p.lastRestRound = roundNumber;
         p.restCount++;
@@ -130,8 +125,8 @@ function generateMatches() {
     // 5. todayCount++
     playersForThisRound.forEach(p => p.todayCount++);
 
-    // 6. ★連続ペア禁止ロジック付きペア作成
-    const pairs = createPairs(playersForThisRound);
+    // 6. 最適化ペア作成
+    const pairs = createOptimizedPairs(playersForThisRound);
 
     // 7. ペア履歴更新
     pairs.forEach(pair => {
@@ -144,8 +139,8 @@ function generateMatches() {
         p2.lastPair = p1.id;
     });
 
-    // 8. ★連続コート禁止ロジック付きコート割り当て
-    const courts = assignCourts(pairs);
+    // 8. 最適化コート割り当て
+    const courts = assignOptimizedCourts(pairs);
 
     // 9. 対戦履歴更新
     courts.forEach((c, courtIndex) => {
@@ -198,33 +193,57 @@ function generateMatches() {
 }
 
 // =========================
-// ★連続ペア禁止ロジック
+// ペア最適化ロジック
 // =========================
 
-function createPairs(playersForThisRound) {
+function createOptimizedPairs(playersForThisRound) {
+    const trials = 200; // 探索回数（増やすとより公平だが重くなる）
+    let bestPairs = null;
+    let bestScore = Infinity;
 
-    let maxTry = 50;
-    while (maxTry-- > 0) {
-
-        let shuffled = shuffle([...playersForThisRound]);
+    for (let t = 0; t < trials; t++) {
+        const shuffled = shuffle([...playersForThisRound]);
+        const tempPairs = [];
         let valid = true;
-        let tempPairs = [];
+        let score = 0;
 
         for (let i = 0; i < shuffled.length; i += 2) {
             const p1 = shuffled[i];
             const p2 = shuffled[i + 1];
 
+            // 連続ペア禁止（強ペナルティ）
             if (p1.lastPair === p2.id || p2.lastPair === p1.id) {
                 valid = false;
                 break;
             }
 
+            const pairCount = (p1.pairHistory[p2.id] || 0) + (p2.pairHistory[p1.id] || 0);
+
+            // ペア履歴に応じたペナルティ
+            if (pairCount === 0) {
+                score += 0;
+            } else if (pairCount === 1) {
+                score += 10;
+            } else if (pairCount === 2) {
+                score += 50;
+            } else {
+                score += 200;
+            }
+
             tempPairs.push([p1, p2]);
         }
 
-        if (valid) return tempPairs;
+        if (!valid) continue;
+
+        if (score < bestScore) {
+            bestScore = score;
+            bestPairs = tempPairs;
+        }
     }
 
+    if (bestPairs) return bestPairs;
+
+    // 最悪時のフォールバック
     return shuffle([...playersForThisRound]).reduce((acc, cur, idx, arr) => {
         if (idx % 2 === 0) acc.push([arr[idx], arr[idx + 1]]);
         return acc;
@@ -232,41 +251,46 @@ function createPairs(playersForThisRound) {
 }
 
 // =========================
-// ★連続コート禁止ロジック
+// コート最適化ロジック
 // =========================
 
-function assignCourts(pairs) {
+function assignOptimizedCourts(pairs) {
+    const trials = 200;
+    let bestCourts = null;
+    let bestScore = Infinity;
 
-    let maxTry = 50;
-
-    while (maxTry-- > 0) {
-
-        let shuffled = shuffle([...pairs]);
-        let courts = [];
+    for (let t = 0; t < trials; t++) {
+        const shuffled = shuffle([...pairs]);
+        const courts = [];
         let valid = true;
+        let score = 0;
 
         for (let i = 0; i < courtCount; i++) {
             const A = shuffled[i * 2];
             const B = shuffled[i * 2 + 1];
-
             const courtNumber = i + 1;
 
-            if (
-                A[0].lastCourt === courtNumber ||
-                A[1].lastCourt === courtNumber ||
-                B[0].lastCourt === courtNumber ||
-                B[1].lastCourt === courtNumber
-            ) {
-                valid = false;
-                break;
-            }
+            // 連続同一コートペナルティ
+            [A[0], A[1], B[0], B[1]].forEach(p => {
+                if (p.lastCourt === courtNumber) {
+                    score += 20;
+                }
+            });
 
             courts.push({ A, B });
         }
 
-        if (valid) return courts;
+        if (!valid) continue;
+
+        if (score < bestScore) {
+            bestScore = score;
+            bestCourts = courts;
+        }
     }
 
+    if (bestCourts) return bestCourts;
+
+    // フォールバック
     return pairs.reduce((acc, cur, idx, arr) => {
         if (idx % 2 === 0) acc.push({ A: arr[idx], B: arr[idx + 1] });
         return acc;
