@@ -1,324 +1,123 @@
-// =========================
-// 初期設定
-// =========================
+function nextRound() {
+  const activePlayers = players.filter(p => p.status === "active");
+  const activeCount = activePlayers.length;
 
-let players = [];
-let courtCount = 1;
-let roundNumber = 0;
-let history = [];
+  if (activeCount < 4) {
+    alert("参加中の人数が4人未満です。");
+    return;
+  }
 
-// =========================
-// 参加者生成（initBtn）
-// =========================
+  const courtCount = decideCourtCount(activeCount);
+  const maxPlayersUsed = courtCount * 4;
 
-document.getElementById("initBtn").onclick = () => {
-    setupPlayers();
-};
+  // 直前ラリーのペア情報（連続ペア禁止用）
+  const lastRound = history[history.length - 1] || null;
+  let lastPairs = new Set();
+  if (lastRound) {
+    lastRound.courts.forEach(c => {
+      lastPairs.add(`${c.pairA[0]}-${c.pairA[1]}`);
+      lastPairs.add(`${c.pairB[0]}-${c.pairB[1]}`);
+    });
+  }
 
-function setupPlayers() {
-    const count = parseInt(document.getElementById("playerCount").value);
-    players = [];
+  let bestScore = Infinity;
+  let bestResult = null;
 
-    for (let i = 1; i <= count; i++) {
-        players.push({
-            id: i,
-            status: "active",
-            todayCount: 0,
-            lastRestRound: -1,
-            pairHistory: {},
-            opponentHistory: {},
-            lastPair: null,
-            lastOpponent: null,
-            lastCourt: null   // ★追加：最後に入ったコート番号
-        });
+  const TRY_COUNT = 1200; // 5秒以内に収まる
+
+  for (let t = 0; t < TRY_COUNT; t++) {
+    const shuffled = shuffle(activePlayers);
+    const usedPlayers = shuffled.slice(0, maxPlayersUsed);
+    const restPlayers = shuffled.slice(maxPlayersUsed);
+
+    // ペア生成
+    const courts = [];
+    let score = 0;
+
+    for (let c = 0; c < courtCount; c++) {
+      const base = c * 4;
+      const p1 = usedPlayers[base];
+      const p2 = usedPlayers[base + 1];
+      const p3 = usedPlayers[base + 2];
+      const p4 = usedPlayers[base + 3];
+
+      const pairA = [p1, p2];
+      const pairB = [p3, p4];
+
+      // ペア偏りスコア
+      score += (p1.pairHistory[p2.id] || 0) * 10;
+      score += (p3.pairHistory[p4.id] || 0) * 10;
+
+      // 連続ペア禁止
+      if (lastPairs.has(`${p1.id}-${p2.id}`)) score += 200;
+      if (lastPairs.has(`${p3.id}-${p4.id}`)) score += 200;
+
+      // 対戦偏りスコア
+      score += (p1.vsHistory[p3.id] || 0) * 4;
+      score += (p1.vsHistory[p4.id] || 0) * 4;
+      score += (p2.vsHistory[p3.id] || 0) * 4;
+      score += (p2.vsHistory[p4.id] || 0) * 4;
+
+      // コート偏りスコア（軽め）
+      [p1, p2, p3, p4].forEach(p => {
+        const lastCourt = p.courtHistory[p.courtHistory.length - 1];
+        if (lastCourt === c + 1) score += 2; // 連続コートペナルティ
+      });
+
+      courts.push({
+        court: c + 1,
+        pairA: [p1.id, p2.id],
+        pairB: [p3.id, p4.id]
+      });
     }
 
-    renderPlayerStatusList();
-    renderPairHistory();
-}
-
-// =========================
-// ステータス表示
-// =========================
-
-function renderPlayerStatusList() {
-    const div = document.getElementById("playerStatusList");
-    div.innerHTML = "";
-
-    players.forEach(p => {
-        const row = document.createElement("div");
-        row.className = "player-status-item";
-
-        row.innerHTML = `
-            ${p.id}番（登場 ${p.todayCount}回）
-            <button onclick="setStatus(${p.id}, 'active')">参加</button>
-            <button onclick="setStatus(${p.id}, 'rest')">休憩</button>
-            <button onclick="setStatus(${p.id}, 'left')">帰宅</button>
-        `;
-
-        div.appendChild(row);
-    });
-}
-
-function setStatus(id, newStatus) {
-    const p = players.find(x => x.id === id);
-    if (!p) return;
-
-    p.status = newStatus;
-
-    renderPlayerStatusList();
-    renderPairHistory();
-}
-
-// =========================
-// 対戦カード生成
-// =========================
-
-document.getElementById("nextRoundBtn").onclick = () => {
-    generateMatches();
-};
-
-function generateMatches() {
-
-    roundNumber++;
-
-    // 1. 参加中の人
-    let activePlayers = players.filter(p => p.status === "active");
-
-    // ★参加人数でコート数自動決定
-    if (activePlayers.length >= 12) courtCount = 3;
-    else if (activePlayers.length >= 8) courtCount = 2;
-    else courtCount = 1;
-
-    const playersNeeded = courtCount * 4;
-
-    if (activePlayers.length < playersNeeded) {
-        alert("参加者が不足しています");
-        return;
+    if (score < bestScore) {
+      bestScore = score;
+      bestResult = { courts, usedPlayers, restPlayers };
     }
+  }
 
-    // 2. todayCount が少ない順
-    activePlayers.sort((a, b) => a.todayCount - b.todayCount);
+  // 最良の組み合わせを採用
+  const { courts, usedPlayers, restPlayers } = bestResult;
 
-    // 3. 試合に出る人
-    let playersForThisRound = activePlayers.slice(0, playersNeeded);
+  // todayCount 更新
+  usedPlayers.forEach(p => p.todayCount++);
 
-    // 4. 休憩候補
-    let restCandidates = activePlayers.slice(playersNeeded);
+  // 履歴更新
+  courts.forEach(c => {
+    const pA1 = players.find(p => p.id === c.pairA[0]);
+    const pA2 = players.find(p => p.id === c.pairA[1]);
+    const pB1 = players.find(p => p.id === c.pairB[0]);
+    const pB2 = players.find(p => p.id === c.pairB[1]);
 
-    // ★連続休憩禁止
-    restCandidates = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
+    // ペア履歴
+    pA1.pairHistory[pA2.id] = (pA1.pairHistory[pA2.id] || 0) + 1;
+    pA2.pairHistory[pA1.id] = (pA2.pairHistory[pA1.id] || 0) + 1;
 
-    if (restCandidates.length === 0) {
-        restCandidates = activePlayers.slice(playersNeeded);
-    }
+    pB1.pairHistory[pB2.id] = (pB1.pairHistory[pB2.id] || 0) + 1;
+    pB2.pairHistory[pB1.id] = (pB2.pairHistory[pB1.id] || 0) + 1;
 
-    const restPlayers = restCandidates;
-    restPlayers.forEach(p => p.lastRestRound = roundNumber);
-
-    // 5. todayCount++
-    playersForThisRound.forEach(p => p.todayCount++);
-
-    // 6. ★連続ペア禁止ロジック付きペア作成
-    const pairs = createPairs(playersForThisRound);
-
-    // 7. ペア履歴更新
-    pairs.forEach(pair => {
-        const [p1, p2] = pair;
-
-        p1.pairHistory[p2.id] = (p1.pairHistory[p2.id] || 0) + 1;
-        p2.pairHistory[p1.id] = (p2.pairHistory[p1.id] || 0) + 1;
-
-        p1.lastPair = p2.id;
-        p2.lastPair = p1.id;
+    // 対戦履歴
+    [pA1, pA2].forEach(pa => {
+      [pB1, pB2].forEach(pb => {
+        pa.vsHistory[pb.id] = (pa.vsHistory[pb.id] || 0) + 1;
+        pb.vsHistory[pa.id] = (pb.vsHistory[pa.id] || 0) + 1;
+      });
     });
 
-    // 8. ★連続コート禁止ロジック付きコート割り当て
-    const courts = assignCourts(pairs);
+    // コート履歴
+    [pA1, pA2, pB1, pB2].forEach(p => p.courtHistory.push(c.court));
+  });
 
-    // 9. 対戦履歴更新
-    courts.forEach((c, courtIndex) => {
-        const A = c.A;
-        const B = c.B;
+  roundNumber++;
+  const roundRecord = {
+    round: roundNumber,
+    courts,
+    rest: restPlayers.map(p => p.id)
+  };
+  history.push(roundRecord);
 
-        A.forEach(a => {
-            B.forEach(b => {
-                a.opponentHistory[b.id] = (a.opponentHistory[b.id] || 0) + 1;
-                b.opponentHistory[a.id] = (b.opponentHistory[a.id] || 0) + 1;
-
-                a.lastOpponent = b.id;
-                b.lastOpponent = a.id;
-            });
-
-            a.lastCourt = courtIndex + 1;  // ★コート記録
-        });
-
-        B.forEach(b => {
-            b.lastCourt = courtIndex + 1;  // ★コート記録
-        });
-    });
-
-    // 10. 表示
-    const roundInfo = document.getElementById("roundInfo");
-    roundInfo.innerHTML = `第${roundNumber}ラリー（コート数：${courtCount}）`;
-
-    const courtDiv = document.getElementById("courts");
-    courtDiv.innerHTML = "";
-
-    courts.forEach((c, idx) => {
-        const div = document.createElement("div");
-        div.className = "court-card";
-
-        div.innerHTML =
-            `コート${idx + 1}<br>
-             ペアA：${c.A[0].id}・${c.A[1].id}<br>
-             vs<br>
-             ペアB：${c.B[0].id}・${c.B[1].id}`;
-
-        courtDiv.appendChild(div);
-    });
-
-    // 11. 履歴追加
-    history.push(courts);
-
-    renderPlayerStatusList();
-    renderPairHistory();
-    renderHistory();
-}
-
-// =========================
-// ★連続ペア禁止ロジック
-// =========================
-
-function createPairs(playersForThisRound) {
-
-    let maxTry = 50;
-    while (maxTry-- > 0) {
-
-        let shuffled = shuffle([...playersForThisRound]);
-        let valid = true;
-        let tempPairs = [];
-
-        for (let i = 0; i < shuffled.length; i += 2) {
-            const p1 = shuffled[i];
-            const p2 = shuffled[i + 1];
-
-            if (p1.lastPair === p2.id || p2.lastPair === p1.id) {
-                valid = false;
-                break;
-            }
-
-            tempPairs.push([p1, p2]);
-        }
-
-        if (valid) return tempPairs;
-    }
-
-    return shuffle([...playersForThisRound]).reduce((acc, cur, idx, arr) => {
-        if (idx % 2 === 0) acc.push([arr[idx], arr[idx + 1]]);
-        return acc;
-    }, []);
-}
-
-// =========================
-// ★連続コート禁止ロジック
-// =========================
-
-function assignCourts(pairs) {
-
-    let maxTry = 50;
-
-    while (maxTry-- > 0) {
-
-        let shuffled = shuffle([...pairs]);
-        let courts = [];
-        let valid = true;
-
-        for (let i = 0; i < courtCount; i++) {
-            const A = shuffled[i * 2];
-            const B = shuffled[i * 2 + 1];
-
-            const courtNumber = i + 1;
-
-            // ★連続で同じコートに入らない
-            if (
-                A[0].lastCourt === courtNumber ||
-                A[1].lastCourt === courtNumber ||
-                B[0].lastCourt === courtNumber ||
-                B[1].lastCourt === courtNumber
-            ) {
-                valid = false;
-                break;
-            }
-
-            courts.push({ A, B });
-        }
-
-        if (valid) return courts;
-    }
-
-    // 最終手段（偏りは出るが必ず割り当て可能）
-    return pairs.reduce((acc, cur, idx, arr) => {
-        if (idx % 2 === 0) acc.push({ A: arr[idx], B: arr[idx + 1] });
-        return acc;
-    }, []);
-}
-
-// =========================
-// ペア履歴表示
-// =========================
-
-function renderPairHistory() {
-    const div = document.getElementById("pairHistory");
-    div.innerHTML = "<h3>ペア履歴</h3>";
-
-    players.forEach(p => {
-        let html = `<div class="pair-history-item">`;
-        html += `<strong>${p.id}番：</strong> 登場 ${p.todayCount}回<br>`;
-        html += `ペア：`;
-
-        const entries = Object.entries(p.pairHistory);
-        if (entries.length === 0) {
-            html += `（まだペアなし）`;
-        } else {
-            html += entries.map(([partnerId, count]) => `${partnerId}番(${count}回)`).join(", ");
-        }
-
-        html += `</div>`;
-        div.innerHTML += html;
-    });
-}
-
-// =========================
-// 履歴表示
-// =========================
-
-function renderHistory() {
-    const div = document.getElementById("historyList");
-    div.innerHTML = "";
-
-    history.forEach((round, idx) => {
-        const item = document.createElement("div");
-        item.className = "history-item";
-
-        let text = `第${idx + 1}ラリー<br>`;
-        round.forEach((c, i) => {
-            text += `コート${i + 1}：${c.A[0].id}・${c.A[1].id} vs ${c.B[0].id}・${c.B[1].id}<br>`;
-        });
-
-        item.innerHTML = text;
-        div.appendChild(item);
-    });
-}
-
-// =========================
-// シャッフル
-// =========================
-
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
+  renderRound(roundRecord);
+  renderHistory();
+  renderPlayerStatusList();
 }
