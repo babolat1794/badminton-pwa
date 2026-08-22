@@ -2,7 +2,7 @@
    ページ全体の文字サイズ
    ========================= */
 body {
-    font-size: 20px;        /* ← 全体の文字を大きくする */
+    font-size: 22px;        /* ← 全体の文字を大きくする */
     line-height: 1.6;       /* ← 読みやすさ向上 */
     font-family: system-ui, sans-serif;
 }
