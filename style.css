@@ -2,15 +2,15 @@
    ページ全体の基本設定
    ========================= */
 body {
-    font-size: 22px;          /* ← 全体の文字を大きくする（重要） */
+    font-size: 24px;          /* ← 全体の文字を大きくする（重要） */
     line-height: 1.6;
     font-family: system-ui, sans-serif;
     padding: 20px;
 }
 
-/* 見出しを少し大きく */
+/* 見出しを大きく */
 h2, h3 {
-    font-size: 26px;
+    font-size: 28px;
     margin-top: 20px;
     margin-bottom: 10px;
 }
@@ -19,14 +19,14 @@ h2, h3 {
    入力欄と通常ボタン（元の大きさに戻す）
    ========================= */
 input[type="number"] {
-    font-size: 22px;
-    padding: 8px 12px;
+    font-size: 24px;          /* ← 参加人数の数字も大きくなる */
+    padding: 10px 14px;
     margin-right: 10px;
 }
 
 button {
-    font-size: 22px;          /* ← 通常ボタンの文字サイズを大きく戻す */
-    padding: 10px 18px;
+    font-size: 24px;          /* ← 通常ボタンの文字サイズも大きく戻す */
+    padding: 12px 20px;
     margin: 6px;
     border-radius: 6px;
     border: none;
@@ -43,11 +43,11 @@ button {
 .status-btn-default {
     background-color: #e0f2ff;
     color: #1976d2;
-    padding: 8px 14px;
+    padding: 10px 16px;
     margin: 4px;
     border-radius: 6px;
     border: none;
-    font-size: 22px;          /* ← ステータスボタンも大きく */
+    font-size: 24px;          /* ← ステータスボタンも大きく */
     cursor: pointer;
 }
 
@@ -55,11 +55,11 @@ button {
 .status-btn-active {
     background-color: #ffe0b2;
     color: #ff7043;
-    padding: 8px 14px;
+    padding: 10px 16px;
     margin: 4px;
     border-radius: 6px;
     border: none;
-    font-size: 22px;          /* ← ステータスボタンも大きく */
+    font-size: 24px;          /* ← ステータスボタンも大きく */
     cursor: pointer;
 }
 
@@ -68,24 +68,24 @@ button {
    ========================= */
 
 .player-status-item {
-    margin-bottom: 14px;
-    font-size: 22px;
+    margin-bottom: 16px;
+    font-size: 24px;
 }
 
 .court-card {
-    margin: 14px 0;
-    padding: 14px;
+    margin: 16px 0;
+    padding: 16px;
     background: #f7f7f7;
     border-radius: 8px;
-    font-size: 24px;          /* ← コート表示も大きく */
+    font-size: 26px;          /* ← コート表示も大きく */
 }
 
 .pair-history-item {
-    margin-bottom: 14px;
-    font-size: 20px;          /* ← 履歴も見やすく */
+    margin-bottom: 16px;
+    font-size: 22px;          /* ← 履歴も見やすく */
 }
 
 .history-item {
-    margin-bottom: 14px;
-    font-size: 20px;
+    margin-bottom: 16px;
+    font-size: 22px;
 }
