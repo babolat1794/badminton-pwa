@@ -1,5 +1,11 @@
-/* ボタンの基本スタイル */
-button {
+/* =========================
+   ステータスボタン専用スタイル
+   ========================= */
+
+/* 非選択（デフォルト） → 水色背景＋青文字 */
+.status-btn-default {
+    background-color: #e0f2ff;
+    color: #1976d2;
     padding: 6px 12px;
     margin: 4px;
     border-radius: 6px;
@@ -8,19 +14,22 @@ button {
     cursor: pointer;
 }
 
-/* デフォルト（非選択） → 水色背景＋青文字 */
-.status-default {
-    background-color: #e0f2ff;
-    color: #1976d2;
-}
-
-/* 選択中のステータス → 薄いオレンジ背景＋赤寄りオレンジ文字 */
-.status-active {
+/* 選択中 → 薄いオレンジ背景＋赤寄りオレンジ文字 */
+.status-btn-active {
     background-color: #ffe0b2;
     color: #ff7043;
+    padding: 6px 12px;
+    margin: 4px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
 }
 
-/* レイアウト調整 */
+/* =========================
+   レイアウト調整
+   ========================= */
+
 .player-status-item {
     margin-bottom: 10px;
 }
