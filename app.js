@@ -22,7 +22,7 @@ function setupPlayers() {
     for (let i = 1; i <= count; i++) {
         players.push({
             id: i,
-            status: "active",
+            status: "active",      // 'active' | 'rest' | 'left'
             todayCount: 0,
             restCount: 0,
             lastRestRound: -1,
@@ -42,6 +42,16 @@ function setupPlayers() {
 // ステータス表示
 // =========================
 
+function getButtonStyle(isActiveStatus) {
+    // 有効ステータス → 薄いオレンジ背景＋赤寄りオレンジ文字
+    // 非有効ステータス → 水色背景＋青文字
+    if (isActiveStatus) {
+        return 'style="background-color:#ffe0b2;color:#ff7043;"';
+    } else {
+        return 'style="background-color:#e0f2ff;color:#1976d2;"';
+    }
+}
+
 function renderPlayerStatusList() {
     const div = document.getElementById("playerStatusList");
     div.innerHTML = "";
@@ -50,11 +60,15 @@ function renderPlayerStatusList() {
         const row = document.createElement("div");
         row.className = "player-status-item";
 
+        const activeStyle = getButtonStyle(p.status === "active");
+        const restStyle   = getButtonStyle(p.status === "rest");
+        const leftStyle   = getButtonStyle(p.status === "left");
+
         row.innerHTML = `
             ${p.id}番（登場 ${p.todayCount}回 / 休憩 ${p.restCount}回）
-            <button onclick="setStatus(${p.id}, 'active')">参加</button>
-            <button onclick="setStatus(${p.id}, 'rest')">休憩</button>
-            <button onclick="setStatus(${p.id}, 'left')">帰宅</button>
+            <button ${activeStyle} onclick="setStatus(${p.id}, 'active')">参加</button>
+            <button ${restStyle} onclick="setStatus(${p.id}, 'rest')">休憩</button>
+            <button ${leftStyle} onclick="setStatus(${p.id}, 'left')">帰宅</button>
         `;
 
         div.appendChild(row);
@@ -83,7 +97,7 @@ function generateMatches() {
 
     roundNumber++;
 
-    // 1. 参加中の人
+    // 1. 参加中の人（手動休憩・帰宅は除外）
     let activePlayers = players.filter(p => p.status === "active");
 
     // コート数自動決定
@@ -94,7 +108,7 @@ function generateMatches() {
     const playersNeeded = courtCount * 4;
 
     if (activePlayers.length < playersNeeded) {
-        alert("参加者が不足しています");
+        alert("参加者が不足しています（現在の参加ステータス人数が足りません）");
         return;
     }
 
@@ -104,13 +118,13 @@ function generateMatches() {
     // 3. 試合に出る人
     let playersForThisRound = activePlayers.slice(0, playersNeeded);
 
-    // 4. 休憩候補（残りの人）
+    // 4. 自動休憩候補（残りの人）
     let restCandidates = activePlayers.slice(playersNeeded);
 
     // 休憩回数の公平性：restCount が少ない順
     restCandidates.sort((a, b) => a.restCount - b.restCount);
 
-    // 連続休憩禁止
+    // 連続休憩禁止（自動休憩のみ）
     let filtered = restCandidates.filter(p => p.lastRestRound !== roundNumber - 1);
     if (filtered.length > 0) {
         restCandidates = filtered;
@@ -125,7 +139,7 @@ function generateMatches() {
     // 5. todayCount++
     playersForThisRound.forEach(p => p.todayCount++);
 
-    // 6. 最適化ペア作成
+    // 6. ペア最適化作成
     const pairs = createOptimizedPairs(playersForThisRound);
 
     // 7. ペア履歴更新
@@ -139,7 +153,7 @@ function generateMatches() {
         p2.lastPair = p1.id;
     });
 
-    // 8. 最適化コート割り当て
+    // 8. コート最適化割り当て
     const courts = assignOptimizedCourts(pairs);
 
     // 9. 対戦履歴更新
@@ -197,7 +211,7 @@ function generateMatches() {
 // =========================
 
 function createOptimizedPairs(playersForThisRound) {
-    const trials = 200; // 探索回数（増やすとより公平だが重くなる）
+    const trials = 200; // 探索回数
     let bestPairs = null;
     let bestScore = Infinity;
 
@@ -243,7 +257,7 @@ function createOptimizedPairs(playersForThisRound) {
 
     if (bestPairs) return bestPairs;
 
-    // 最悪時のフォールバック
+    // フォールバック
     return shuffle([...playersForThisRound]).reduce((acc, cur, idx, arr) => {
         if (idx % 2 === 0) acc.push([arr[idx], arr[idx + 1]]);
         return acc;
@@ -262,7 +276,6 @@ function assignOptimizedCourts(pairs) {
     for (let t = 0; t < trials; t++) {
         const shuffled = shuffle([...pairs]);
         const courts = [];
-        let valid = true;
         let score = 0;
 
         for (let i = 0; i < courtCount; i++) {
@@ -279,8 +292,6 @@ function assignOptimizedCourts(pairs) {
 
             courts.push({ A, B });
         }
-
-        if (!valid) continue;
 
         if (score < bestScore) {
             bestScore = score;
