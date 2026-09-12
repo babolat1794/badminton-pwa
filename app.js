@@ -356,6 +356,84 @@ function renderHistory() {
 }
 
 // =========================
+// やり直し機能
+// =========================
+
+document.getElementById("undoBtn").onclick = () => {
+    undoLastRound();
+};
+
+function undoLastRound() {
+
+    if (roundNumber === 0 || history.length === 0) {
+        alert("戻すラリーがありません");
+        return;
+    }
+
+    // 最後のラリーを取得
+    const lastRound = history.pop();
+    roundNumber--;
+
+    // そのラリーで登場したプレイヤーの todayCount を戻す
+    lastRound.forEach(court => {
+        const A = court.A;
+        const B = court.B;
+
+        [...A, ...B].forEach(p => {
+            p.todayCount--;
+            p.lastCourt = null;
+        });
+
+        // ペア履歴を巻き戻す
+        const [a1, a2] = A;
+        const [b1, b2] = B;
+
+        a1.pairHistory[a2.id]--;
+        a2.pairHistory[a1.id]--;
+
+        b1.pairHistory[b2.id]--;
+        b2.pairHistory[b1.id]--;
+
+        // 対戦履歴を巻き戻す
+        A.forEach(a => {
+            B.forEach(b => {
+                a.opponentHistory[b.id]--;
+                b.opponentHistory[a.id]--;
+            });
+        });
+
+        // lastPair / lastOpponent をクリア
+        [...A, ...B].forEach(p => {
+            p.lastPair = null;
+            p.lastOpponent = null;
+        });
+    });
+
+    // 自動休憩の巻き戻し（手動休憩は維持）
+    players.forEach(p => {
+        if (p.lastRestRound === roundNumber + 1) {
+            p.restCount--;
+            p.lastRestRound = -1;
+        }
+    });
+
+    // 画面を更新
+    renderPlayerStatusList();
+    renderPairHistory();
+    renderHistory();
+
+    const roundInfo = document.getElementById("roundInfo");
+    if (roundNumber === 0) {
+        roundInfo.innerHTML = "";
+        document.getElementById("courts").innerHTML = "";
+    } else {
+        roundInfo.innerHTML = `第${roundNumber}ラリー`;
+    }
+
+    alert("1つ前のラリーに戻しました");
+}
+
+// =========================
 // シャッフル
 // =========================
 
