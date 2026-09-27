@@ -444,3 +444,49 @@ function shuffle(array) {
     }
     return array;
 }
+
+// =========================
+// １人追加機能
+// =========================
+
+document.getElementById("addOneBtn").onclick = () => {
+    addOnePlayer();
+};
+
+function addOnePlayer() {
+
+    // 現在の人数
+    const currentCount = players.length;
+
+    if (currentCount >= 25) {
+        alert("参加者は最大25人までです");
+        return;
+    }
+
+    const newId = currentCount + 1;
+
+    // 新規プレイヤーを追加（履歴はゼロから）
+    players.push({
+        id: newId,
+        status: "active",
+        todayCount: 0,
+        restCount: 0,
+        lastRestRound: -1,
+        pairHistory: {},
+        opponentHistory: {},
+        lastPair: null,
+        lastOpponent: null,
+        lastCourt: null
+    });
+
+    // 画面の参加人数表示を更新（index.html の数字）
+    const input = document.getElementById("playerCount");
+    input.value = newId;
+
+    // UIを更新
+    renderPlayerStatusList();
+    renderPairHistory();
+    renderHistory();
+
+    alert(`参加者を1人追加しました（現在 ${newId}人）`);
+}
